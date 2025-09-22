@@ -1,0 +1,6 @@
+Mapping for compatibility to type of server needed
+
+"armeabi-v7a" = "arm"
+"arm64-v8a"   = "arm64"
+"x86"         = "x86"
+"x86_64"      = "x86_64"
