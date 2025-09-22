@@ -1,11 +1,11 @@
 param([string]$extraPath)
 
 $env:Path = $env:Path + ";" + $extraPath
-Write-Host "Updated PATH: $env:Path"
+Write-Host "PATH UPDATED"
 
 $ErrorActionPreference = "Stop"
 
-$serversFolder = ".\frida-setup\servers"   # SERVER FOLDER
+$serversFolder = ".\frida-setup\servers"  # SERVER FOLDER
 $adbPath = "adb"
 
 if (-not (Get-Command $adbPath -ErrorAction SilentlyContinue)) {
@@ -34,7 +34,7 @@ $fridaAbi = $abiMap[$abi]
 $serverFile = Get-ChildItem -Path $serversFolder -File | Where-Object { $_.Name -match $fridaAbi } | Select-Object -First 1
 
 if (-not $serverFile) {
-    Write-Error "[-]No frida-server binary found in $serversFolder matching ABI '$abi'"
+    Write-Error "[-]No frida-server binary found in $serversFolder matching ABI '$abi'. Refer to the README.md for furthur instructions"
     exit 3
 }
 
@@ -63,6 +63,6 @@ try {
 Start-Sleep -Seconds 1
 $psCheck = & $adbPath -s $deviceId shell "ps -A | grep frida-server" 2>$null
 if (-not $psCheck) { $psCheck = & $adbPath -s $deviceId shell "ps | grep frida-server" 2>$null }
-if ($psCheck) { Write-Host "[+] frida-server is running." } else { Write-Warning "[-]frida-server not running; check logs on device." }
+if (-not $psCheck) { Write-Warning "[-]frida-server not running; check logs on device." }
 
 Write-Host "++++++++ Frida is Live ++++++++"

@@ -1,1 +1,2 @@
-frida-setup\servers\*
+frida-setup/servers/*
+__pycache__

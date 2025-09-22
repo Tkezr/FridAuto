@@ -22,6 +22,8 @@ script_path = path + "\\frida-setup.ps1"
 
 subprocess.run(["powershell", "-ExecutionPolicy", "Bypass", "-File", script_path, extra_path])
 
+sleep(2)
+
 script_name, session = run_scripts()
 if script_name:
     print(f"[+] Script {script_name} is running!")
