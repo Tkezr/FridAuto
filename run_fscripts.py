@@ -2,6 +2,8 @@ import frida
 import os
 import time
 
+continue_run = True
+
 def select_scripts(scripts_dir="./fscripts"):
     """
     List all JS scripts in the directory and let the user choose which ones to run.
@@ -57,7 +59,7 @@ def select_app(device):
                 return apps[idx].identifier
         print("[!] Invalid selection. Try again.")
 
-def run_scripts(device=None, scripts_dir="./fscripts"):
+def run_scripts(device=None, scripts_dir="./fscripts",given_app=None):
     """
     Iterates over all scripts in ./fscripts.
     Spawns a fresh app instance for each script.
@@ -70,7 +72,10 @@ def run_scripts(device=None, scripts_dir="./fscripts"):
             print("[!] No USB device found.")
             return
 
-    target_app = select_app(device)
+    if given_app == None:
+        target_app = select_app(device)
+    else:
+        target_app = given_app
 
     scripts = select_scripts()
 
@@ -78,7 +83,6 @@ def run_scripts(device=None, scripts_dir="./fscripts"):
         script_path = os.path.join(scripts_dir, script_file)
         print(f"\n[+] Running script: {script_file}")
 
-        # Spawn a fresh instance of the app
         try:
             pid = device.spawn([target_app])
             session = device.attach(pid)
@@ -86,7 +90,6 @@ def run_scripts(device=None, scripts_dir="./fscripts"):
             print(f"[!] Failed to spawn or attach to {target_app}: {e}")
             continue
 
-        # Load the Frida script
         try:
             with open(script_path, "r", encoding="utf-8") as f:
                 js_code = f.read()
@@ -95,7 +98,6 @@ def run_scripts(device=None, scripts_dir="./fscripts"):
             frida_script.on('message', lambda message, data: print(f"[FRIDA MESSAGE] {message}"))
             frida_script.load()
 
-            # Resume the app
             try:
                 device.resume(pid)
             except frida.InvalidArgumentError:
@@ -104,16 +106,27 @@ def run_scripts(device=None, scripts_dir="./fscripts"):
 
             print(f"[+] Script {script_file} loaded. App is running.")
 
-            if input("[*] Press Q to Quit or\n[*] Press Enter to continue to the next script...") == 'q':
-                return
+            choice = input("[*] Press Q to Quit Instance or\n[*] Press R to Rerun this script\n[*] Press Enter to continue to the next script...")
+
+            if choice == 'q':
+                break
+            elif choice == 'r':
+                # [!!] Do something that reruns the script
+                pass
 
         except Exception as e:
             print(f"[!] Error running {script_file}: {e}")
-
-        # Detach and kill the app before the next iteration
         try:
             session.detach()
-            # Optionally, force-stop the app to clean state
-            # On Android, use adb: os.system(f"adb shell am force-stop {target_app}")
         except Exception as e:
             print(f"[!] Failed to detach session: {e}")
+
+    switch = input("Choose what to do next:\n[1] Choose new scripts to run\n[2] Choose different app to run scripts on\n[3] Quit FridAuto\n")
+    
+    if switch == '1':
+        run_scripts(device=device,given_app=target_app)
+    elif switch == '2':
+        run_scripts(device=device)
+    else:
+        return
+
