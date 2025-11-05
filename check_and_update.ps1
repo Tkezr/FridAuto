@@ -12,6 +12,8 @@ $Branch      = "main"
 $LocalDir    = (Get-Location).Path
 $VersionFile = Join-Path $LocalDir ".last_commit.txt"
 
+$ProgressPreference = 'SilentlyContinue'
+
 # --- Download a file from URL ---
 function Download-File($Url, $OutFile) {
     Write-Host "[+] Downloading $Url -> $OutFile"
@@ -19,6 +21,7 @@ function Download-File($Url, $OutFile) {
         Invoke-WebRequest -Uri $Url -OutFile $OutFile -UseBasicParsing
     } catch {
         Write-Host "[!] Failed to download $Url : $_"
+        Write-Output "STATUS:DOWNLOAD_FAILED"
         exit 1
     }
 }
@@ -56,15 +59,21 @@ if ($LocalSHA -eq $LatestSHA) {
     exit 0
 }
 
-# --- Download latest ZIP ---
+# --- Use local temp folder instead of $env:TEMP ---
+$TempFolder = Join-Path $LocalDir "__update_temp"
+if (Test-Path $TempFolder) { Remove-Item $TempFolder -Recurse -Force }
+New-Item -ItemType Directory -Path $TempFolder | Out-Null
+
 $ZipUrl = "https://github.com/$RepoOwner/$RepoName/archive/refs/heads/$Branch.zip"
-$ZipFile = Join-Path $env:TEMP "$RepoName.zip"
+$ZipFile = Join-Path $TempFolder "$RepoName.zip"
+$TempExtractDir = Join-Path $TempFolder "$RepoName-temp"
+
+# --- Download latest ZIP ---
 Download-File $ZipUrl $ZipFile
 
 # --- Extract into current directory ---
 Write-Host "[*] Extracting files..."
 try {
-    $TempExtractDir = Join-Path $env:TEMP "$RepoName-temp"
     if (Test-Path $TempExtractDir) { Remove-Item $TempExtractDir -Recurse -Force }
     Expand-Archive -Path $ZipFile -DestinationPath $TempExtractDir -Force
 
@@ -73,10 +82,11 @@ try {
     Write-Host "[*] Updating files in $LocalDir ..."
     Copy-Item -Path "$ExtractedFolder\*" -Destination $LocalDir -Recurse -Force
 
-    Remove-Item $ZipFile -Force
-    Remove-Item $TempExtractDir -Recurse -Force
+    # Cleanup
+    Remove-Item $TempFolder -Recurse -Force
 } catch {
     Write-Host "[!] Extraction or copy failed: $_"
+    Write-Output "STATUS:EXTRACTION_FAILED"
     exit 1
 }
 

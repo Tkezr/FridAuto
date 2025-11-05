@@ -3,9 +3,21 @@ import os
 from time import sleep
 from run_fscripts import run_scripts
 import sys
+import threading
 
 DEBUG_MODE = False
 UPDATE_MODE = False
+
+def loading_animation(stop_event):
+    spinner = ['⠋','⠙','⠹','⠸','⠼','⠴','⠦','⠧','⠇','⠏']
+
+    idx = 0
+    while not stop_event.is_set():
+        sys.stdout.write(f"\rChecking for updates... {spinner[idx]}")
+        sys.stdout.flush()
+        idx = (idx + 1) % len(spinner)
+        sleep(0.1)
+    sys.stdout.write("\rChecking for updates... Done!     \n")
 
 def start_scripts():
         run_scripts()
@@ -21,6 +33,19 @@ def start_scripts():
                 Made By Taher
         """)
         sleep(2)
+
+def update_script():
+
+        upd_script = os.path.join(os.path.dirname(__file__), "check_and_update.ps1")
+
+        result = subprocess.run(
+                ["powershell", "-ExecutionPolicy", "Bypass", "-File", upd_script,"-Quiet"],
+                capture_output=True,
+                text=True
+                )
+
+        return result
+
 
 
 options = sys.argv
@@ -55,20 +80,16 @@ sleep(2)
 
 print("\nChecking For Updates\n")
 
-upd_script = os.path.join(os.path.dirname(__file__), "check_and_update.ps1")
-
 if UPDATE_MODE:
-        try:
-                result = subprocess.run(
-                ["powershell", "-ExecutionPolicy", "Bypass", "-File", upd_script,"-Quiet"],
-                capture_output=True,
-                text=True
-                )
-        except Exception as e:
-                if DEBUG_MODE:
-                        print(e)
-                else:
-                        print("An error Occured fetching latest file, Use -d in options to see what happened")
+
+        stop_event = threading.Event()
+        loader_thread = threading.Thread(target=loading_animation, args=(stop_event,))
+        loader_thread.start()
+
+        result = update_script()
+
+        stop_event.set()
+        loader_thread.join()
 
         if "STATUS:UP_TO_DATE" in result.stdout:
                 print("Latest Version Already Installed")
@@ -76,6 +97,7 @@ if UPDATE_MODE:
                 print("Installed Latest Update")
         elif "STATUS:COULD_NOT_CONNECT_TO_GITHUB" in result.stdout or result.returncode != 0:
                 print("Unable to connect to github\nSkipping Version Update")
+        
 else:
         print("Skipped Version Check")
 
