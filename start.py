@@ -36,7 +36,7 @@ if "-h" in options or "--help" in options:
 if "-d" in options or "--debug" in options:
         DEBUG_MODE = True
 
-if "-n" in options or "--no-update" in options:
+if "-u" in options or "--update" in options:
         UPDATE_MODE = True
 
 
