@@ -20,7 +20,7 @@ def select_scripts(scripts_dir="./fscripts"):
     for i, script in enumerate(scripts, 1):
         print(f"{i}. {script}")
 
-    choice = input("Enter numbers of scripts to run (comma-separated) or press Enter to run all: ").strip()
+    choice = input("\nEnter numbers of scripts to run (comma-separated) or press Enter to run all: ").strip()
     if not choice:
         # Run all scripts if input is empty
         return scripts
@@ -52,7 +52,7 @@ def list_apps(device):
 def select_app(device):
     apps = list_apps(device)
     while True:
-        choice = input("Enter the number of the app to attach Frida to: ").strip()
+        choice = input("\nEnter the number of the app to attach Frida to: ").strip()
         if choice.isdigit():
             idx = int(choice) - 1
             if 0 <= idx < len(apps):
@@ -80,46 +80,53 @@ def run_scripts(device=None, scripts_dir="./fscripts",given_app=None):
     scripts = select_scripts()
 
     for script_file in scripts:
-        script_path = os.path.join(scripts_dir, script_file)
-        print(f"\n[+] Running script: {script_file}")
-
-        try:
-            pid = device.spawn([target_app])
-            session = device.attach(pid)
-        except Exception as e:
-            print(f"[!] Failed to spawn or attach to {target_app}: {e}")
-            continue
-
-        try:
-            with open(script_path, "r", encoding="utf-8") as f:
-                js_code = f.read()
-
-            frida_script = session.create_script(js_code)
-            frida_script.on('message', lambda message, data: print(f"[FRIDA MESSAGE] {message}"))
-            frida_script.load()
+        quits = False
+        while True:
+            script_path = os.path.join(scripts_dir, script_file)
+            print(f"\n[+] Running script: {script_file}")
 
             try:
-                device.resume(pid)
-            except frida.InvalidArgumentError:
-                print("[!] PID already resumed or invalid.")
-            time.sleep(0.5)
+                pid = device.spawn([target_app])
+                session = device.attach(pid)
+            except Exception as e:
+                print(f"[!] Failed to spawn or attach to {target_app}: {e}")
+                continue
 
-            print(f"[+] Script {script_file} loaded. App is running.")
+            try:
+                with open(script_path, "r", encoding="utf-8") as f:
+                    js_code = f.read()
 
-            choice = input("[*] Press Q to Quit Instance or\n[*] Press R to Rerun this script\n[*] Press Enter to continue to the next script...")
+                frida_script = session.create_script(js_code)
+                frida_script.on('message', lambda message, data: print(f"[FRIDA MESSAGE] {message}"))
+                frida_script.load()
 
-            if choice == 'q':
-                break
-            elif choice == 'r':
-                # [!!] Do something that reruns the script
-                pass
+                try:
+                    device.resume(pid)
+                except frida.InvalidArgumentError:
+                    print("[!] PID already resumed or invalid.")
+                time.sleep(0.5)
 
-        except Exception as e:
-            print(f"[!] Error running {script_file}: {e}")
-        try:
-            session.detach()
-        except Exception as e:
-            print(f"[!] Failed to detach session: {e}")
+                print(f"[+] Script {script_file} loaded. App is running.")
+
+                choice = input("[*] Press Q to Quit Instance or\n[*] Press R to Rerun this script\n[*] Press Enter to continue to the next script...")
+
+                if choice == 'q':
+                    quits = True
+                    break
+                elif choice == 'r':
+                    pass
+                elif choice == '':
+                    break
+
+            except Exception as e:
+                print(f"[!] Error running {script_file}: {e}")
+            try:
+                session.detach()
+            except Exception as e:
+                print(f"[!] Failed to detach session: {e}")
+            
+        if quits:
+            break
 
     switch = input("Choose what to do next:\n[1] Choose new scripts to run\n[2] Choose different app to run scripts on\n[3] Quit FridAuto\n")
     

@@ -31,17 +31,18 @@ try {
     $LatestSHA = $Response.sha
 } catch {
     Write-Host "[!] Failed to fetch commit info: $_"
+    Write-Output "STATUS:COULD_NOT_CONNECT_TO_GITHUB"
     exit 1
 }
 
 if (-not $LatestSHA) {
-    Write-Host "[!] Could not determine latest commit SHA."
+    Write-Output "STATUS:COULD_NOT_CONNECT_TO_GITHUB"
     exit 1
 }
 
 Write-Host "[*] Latest commit SHA: $LatestSHA"
 
-# --- STEP 2: Compare with last local version ---
+# --- Compare with last local version ---
 $LocalSHA = ""
 if (Test-Path $VersionFile) {
     $LocalSHA = Get-Content $VersionFile -ErrorAction SilentlyContinue
@@ -51,30 +52,27 @@ if (Test-Path $VersionFile) {
 }
 
 if ($LocalSHA -eq $LatestSHA) {
-    Write-Host "[+] Already up-to-date."
+    Write-Output "STATUS:UP_TO_DATE"
     exit 0
 }
 
-# --- STEP 3: Download latest ZIP ---
+# --- Download latest ZIP ---
 $ZipUrl = "https://github.com/$RepoOwner/$RepoName/archive/refs/heads/$Branch.zip"
 $ZipFile = Join-Path $env:TEMP "$RepoName.zip"
 Download-File $ZipUrl $ZipFile
 
-# --- STEP 4: Extract into current directory ---
+# --- Extract into current directory ---
 Write-Host "[*] Extracting files..."
 try {
     $TempExtractDir = Join-Path $env:TEMP "$RepoName-temp"
     if (Test-Path $TempExtractDir) { Remove-Item $TempExtractDir -Recurse -Force }
     Expand-Archive -Path $ZipFile -DestinationPath $TempExtractDir -Force
 
-    # Inside the ZIP, GitHub adds folder like repo-branch/
     $ExtractedFolder = Join-Path $TempExtractDir "$RepoName-$Branch"
 
-    # Copy everything (overwrite existing files)
     Write-Host "[*] Updating files in $LocalDir ..."
     Copy-Item -Path "$ExtractedFolder\*" -Destination $LocalDir -Recurse -Force
 
-    # Clean up
     Remove-Item $ZipFile -Force
     Remove-Item $TempExtractDir -Recurse -Force
 } catch {
@@ -82,7 +80,9 @@ try {
     exit 1
 }
 
-# --- STEP 5: Save new version ---
+# --- Save new version ---
 $LatestSHA | Out-File -Encoding ascii -FilePath $VersionFile -Force
 Write-Host "[+] Updated to latest version ($LatestSHA)."
+Write-Output "STATUS:UPDATE_SUCCESS"
 Write-Host "[*] All done!"
+exit 0
