@@ -13,11 +13,11 @@ def loading_animation(stop_event):
 
     idx = 0
     while not stop_event.is_set():
-        sys.stdout.write(f"\rChecking for updates... {spinner[idx]}")
+        sys.stdout.write(f"\rDownloading Updates... {spinner[idx]}")
         sys.stdout.flush()
         idx = (idx + 1) % len(spinner)
         sleep(0.1)
-    sys.stdout.write("\rChecking for updates... Done!     \n")
+    sys.stdout.write("\rDownloading Updates... Done!     \n")
 
 def start_scripts():
         run_scripts()
